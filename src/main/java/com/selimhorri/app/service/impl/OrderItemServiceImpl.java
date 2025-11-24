@@ -37,12 +37,23 @@ public class OrderItemServiceImpl implements OrderItemService {
 				.stream()
 				.map(OrderItemMappingHelper::map)
 				.map(o -> {
-					o.setProductDto(
-							this.restTemplate.getForObject(AppConstant.DiscoveredDomainsApi.PRODUCT_SERVICE_API_URL
-									+ "/" + o.getProductDto().getProductId(), ProductDto.class));
-					o.setOrderDto(this.restTemplate.getForObject(
-							AppConstant.DiscoveredDomainsApi.ORDER_SERVICE_API_URL + "/" + o.getOrderDto().getOrderId(),
-							OrderDto.class));
+					try {
+						o.setProductDto(
+								this.restTemplate.getForObject(AppConstant.DiscoveredDomainsApi.PRODUCT_SERVICE_API_URL
+										+ "/" + o.getProductDto().getProductId(), ProductDto.class));
+					} catch (Exception e) {
+						log.error("Error fetching product {}: {}", o.getProductDto().getProductId(), e.getMessage());
+						// Continuar sin productDto si falla
+					}
+					try {
+						o.setOrderDto(this.restTemplate.getForObject(
+								AppConstant.DiscoveredDomainsApi.ORDER_SERVICE_API_URL + "/"
+										+ o.getOrderDto().getOrderId(),
+								OrderDto.class));
+					} catch (Exception e) {
+						log.error("Error fetching order {}: {}", o.getOrderDto().getOrderId(), e.getMessage());
+						// Continuar sin orderDto si falla
+					}
 					return o;
 				})
 				.distinct()
@@ -55,12 +66,25 @@ public class OrderItemServiceImpl implements OrderItemService {
 		return this.orderItemRepository.findById(orderItemId)
 				.map(OrderItemMappingHelper::map)
 				.map(o -> {
-					o.setProductDto(
-							this.restTemplate.getForObject(AppConstant.DiscoveredDomainsApi.PRODUCT_SERVICE_API_URL
-									+ "/" + o.getProductDto().getProductId(), ProductDto.class));
-					o.setOrderDto(this.restTemplate.getForObject(
-							AppConstant.DiscoveredDomainsApi.ORDER_SERVICE_API_URL + "/" + o.getOrderDto().getOrderId(),
-							OrderDto.class));
+					try {
+						o.setProductDto(
+								this.restTemplate.getForObject(AppConstant.DiscoveredDomainsApi.PRODUCT_SERVICE_API_URL
+										+ "/" + o.getProductDto().getProductId(), ProductDto.class));
+					} catch (Exception e) {
+						log.error("Error fetching product {}: {}", o.getProductDto().getProductId(), e.getMessage());
+						// Lanzar excepción para que el handler la capture
+						throw new RuntimeException("Failed to fetch product data: " + e.getMessage(), e);
+					}
+					try {
+						o.setOrderDto(this.restTemplate.getForObject(
+								AppConstant.DiscoveredDomainsApi.ORDER_SERVICE_API_URL + "/"
+										+ o.getOrderDto().getOrderId(),
+								OrderDto.class));
+					} catch (Exception e) {
+						log.error("Error fetching order {}: {}", o.getOrderDto().getOrderId(), e.getMessage());
+						// Lanzar excepción para que el handler la capture
+						throw new RuntimeException("Failed to fetch order data: " + e.getMessage(), e);
+					}
 					return o;
 				})
 				.orElseThrow(() -> new OrderItemNotFoundException(
